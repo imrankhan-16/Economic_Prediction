@@ -5,8 +5,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ProgressBar;
 import android.widget.Toast;
-
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -38,23 +38,23 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class Pakistan_Fragment extends Fragment {
-
-    private static final String URL = "http://192.168.18.24:8080/predict?dataset=pakistan";
-
-    private AnyChartView chartView;
-    private List<Double> actualData = new ArrayList<>();
-    private List<Double> trainData = new ArrayList<>();
-    private List<Double> testData =  new ArrayList<>();
+public class UsaFragment extends Fragment
+{
+    private static final String URL = "http://192.168.18.24:8080/predict?dataset=us";
+    public AnyChartView graph;
+    private ProgressBar progressBar;
+    public List<Double> actualData=new ArrayList<>();
+    public List<Double> trainData= new ArrayList<>();;
+    public List<Double> testData= new ArrayList<>();;
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        final View root = inflater.inflate(R.layout.pakistan_fragment, container, false);
-        chartView = (AnyChartView) root.findViewById(R.id.any_chart_view);
-        chartView.setVisibility(View.VISIBLE);
-        chartView.setProgressBar(root.findViewById(R.id.progress));
-
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState)
+    {
+        View root = inflater.inflate(R.layout.usa_fragment, container, false);
+        progressBar = (ProgressBar) root.findViewById(R.id.progress1);
+        graph = (AnyChartView) root.findViewById(R.id.any_chart_view1);
+        graph.setVisibility(View.VISIBLE);
         return root;
     }
 
@@ -64,33 +64,39 @@ public class Pakistan_Fragment extends Fragment {
         fetchDataFromFlask();
     }
 
-    public void fetchDataFromFlask() {
+    public void fetchDataFromFlask()
+    {
         OkHttpClient okHttpClient = new OkHttpClient();
-
         final Request request = new Request.Builder()
                 .url(URL)
                 .build();
 
-        okHttpClient.newCall(request).enqueue(new Callback() {
+        okHttpClient.newCall(request).enqueue(new Callback()
+        {
             @Override
-            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+            public void onFailure(@NotNull Call call, @NotNull IOException e)
+            {
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
-                    public void run() {
+                    public void run()
+                    {
                         Toast.makeText(getContext(), "Network not found!", Toast.LENGTH_LONG).show();
                     }
                 });
             }
-
             @Override
-            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-                if (response.isSuccessful()) {
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException
+            {
+                if(response.isSuccessful())
+                {
                     final String res = response.body().string();
-                    getActivity().runOnUiThread(new Runnable() {
+                    getActivity().runOnUiThread(new Runnable()
+                    {
                         @Override
-                        public void run() {
+                        public void run()
+                        {
                             initializeData(res);
-                            drawChart(chartView);
+                            drawChart(graph);
                         }
                     });
                 }
@@ -98,11 +104,12 @@ public class Pakistan_Fragment extends Fragment {
         });
     }
 
-    public void drawChart(AnyChartView anyChartView) {
-
+    public void drawChart(AnyChartView anyChartView)
+    {
         Cartesian cartesian = AnyChart.line();
         cartesian.animation(true);
         cartesian.padding(10d, 20d, 5d, 20d);
+
         cartesian.crosshair().enabled(true);
         cartesian.crosshair()
                 .yLabel(true)
@@ -115,9 +122,9 @@ public class Pakistan_Fragment extends Fragment {
         cartesian.xAxis(0).labels().padding(5d, 5d, 5d, 5d);
 
         List<DataEntry> seriesData = new ArrayList<>();
-
-        for (int i = 0; i < testData.size(); i++) {
-            seriesData.add(new ChartDataEntry("" + i, actualData.get(i), testData.get(i), trainData.get(i)));
+        for(int i = 0; i < testData.size(); i++)
+        {
+            seriesData.add(new UsaFragment.CustomDataEntry(""+i, actualData.get(i), testData.get(i), trainData.get(i)));
         }
 
         Set set = Set.instantiate();
@@ -126,37 +133,37 @@ public class Pakistan_Fragment extends Fragment {
         Mapping series2Mapping = set.mapAs("{ x: 'x', value: 'value2' }");
         Mapping series3Mapping = set.mapAs("{ x: 'x', value: 'value3' }");
 
-        Line graph1 = cartesian.line(series1Mapping);
-        graph1.name("Actual");
-        graph1.hovered().markers().enabled(true);
-        graph1.hovered().markers()
+        Line series1 = cartesian.line(series1Mapping);
+        series1.name("Actual");
+        series1.hovered().markers().enabled(true);
+        series1.hovered().markers()
                 .type(MarkerType.CIRCLE)
                 .size(4d);
-        graph1.tooltip()
+        series1.tooltip()
                 .position("right")
                 .anchor(String.valueOf(Anchor.LEFT_CENTER))
                 .offsetX(5d)
                 .offsetY(5d);
 
-        Line graph2 = cartesian.line(series2Mapping);
-        graph2.name("Test");
-        graph2.hovered().markers().enabled(true);
-        graph2.hovered().markers()
+        Line series2 = cartesian.line(series2Mapping);
+        series2.name("Test");
+        series2.hovered().markers().enabled(true);
+        series2.hovered().markers()
                 .type(MarkerType.CIRCLE)
                 .size(4d);
-        graph2.tooltip()
+        series2.tooltip()
                 .position("right")
                 .anchor(String.valueOf(Anchor.LEFT_CENTER))
                 .offsetX(5d)
                 .offsetY(5d);
 
-        Line graph3 = cartesian.line(series3Mapping);
-        graph3.name("Train");
-        graph3.hovered().markers().enabled(true);
-        graph3.hovered().markers()
+        Line series3 = cartesian.line(series3Mapping);
+        series3.name("Train");
+        series3.hovered().markers().enabled(true);
+        series3.hovered().markers()
                 .type(MarkerType.CIRCLE)
                 .size(4d);
-        graph3.tooltip()
+        series3.tooltip()
                 .position("right")
                 .anchor(String.valueOf(Anchor.LEFT_CENTER))
                 .offsetX(5d)
@@ -165,13 +172,15 @@ public class Pakistan_Fragment extends Fragment {
         cartesian.legend().enabled(true);
         cartesian.legend().fontSize(13d);
         cartesian.legend().padding(0d, 0d, 10d, 0d);
-
         anyChartView.setChart(cartesian);
+        progressBar.setVisibility(View.GONE);
     }
 
-    class ChartDataEntry extends ValueDataEntry {
 
-        ChartDataEntry(String x, Number value, Number value2, Number value3) {
+    public class CustomDataEntry extends ValueDataEntry
+    {
+        CustomDataEntry(String x, Number value, Number value2, Number value3)
+        {
             super(x, value);
             setValue("value2", value2);
             setValue("value3", value3);
@@ -179,54 +188,62 @@ public class Pakistan_Fragment extends Fragment {
     }
 
 
-    private void initializeData(String s) {
-        try {
+    public void SplitString(String s, List<Double> ls)
+    {
+        ArrayList<Double> temporary = new ArrayList<Double>();
+        String[] data = s.split(",|\"");
+        int i = 0;
+        for(String w : data)
+        {
+            double value = Double.parseDouble(w);
+
+            if(Double.isNaN(value))
+            {
+                value = 0.0;
+            }
+
+            temporary.add(value);
+            Log.d("Pak", "value "+ value);
+            ls.add(i, value);
+            ++i;
+        }
+    }
+
+    public void initializeData(String s)
+    {
+        try
+        {
             Scanner s1 = new Scanner(s);
             s1.useDelimiter("\\[|\\]|\n|\\{|\\}");
             String line = "";
-            while (s1.hasNext()) {
+            while(s1.hasNext())
+            {
                 line += s1.next();
             }
 
-            String[] words = line.split("train\":|test\":|actual data\":");
+
+            String[] words = line.split("train\":|test\":|actualdata\":");
             String actualdata = "";
             String traindata = "";
             String testdata = "";
 
-            for (String w : words) {
+            for(String w : words)
+            {
                 w.replaceAll("\"", "");
             }
 
-            words[0] = words[1];
-            words[1] = words[2];
-            words[2] = words[3];
+            words[0] = words[1]; words[1] = words[2]; words[2] = words[3];
             actualdata = words[0];
             testdata = words[1];
             traindata = words[2];
 
-            splintString(actualdata, actualData);
-            splintString(testdata, testData);
-            splintString(traindata, trainData);
-        } catch (Exception e) {
-            Log.d("Pak>>", "error", e);
+            SplitString(actualdata, actualData);
+            SplitString(testdata, testData);
+            SplitString(traindata, trainData);
         }
-    }
-
-
-    private void splintString(String s, List<Double> ls) {
-        ArrayList<Double> temporary = new ArrayList<Double>();
-        String[] data = s.split(",|\"");
-        int i = 0;
-        for (String w : data) {
-            double value = Double.parseDouble(w);
-
-            if (Double.isNaN(value)) {
-                value = 0.0;
-            }
-            temporary.add(value);
-            Log.d("Pak", "value " + value);
-            ls.add(i, value);
-            ++i;
+        catch (Exception e)
+        {
+            Log.d("Pak>>", "error", e);
         }
     }
 }

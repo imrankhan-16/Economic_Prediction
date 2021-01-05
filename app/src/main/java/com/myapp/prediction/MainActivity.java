@@ -15,7 +15,7 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
 
-        getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new USA_Fragment()).commit();
+        getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new UsaFragment()).commit();
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigationView);
         bottomNavigationView.setItemIconTintList(null);
         bottomNavigationView.setOnNavigationItemSelectedListener(navListener);
@@ -29,10 +29,10 @@ public class MainActivity extends AppCompatActivity
 
                     switch (menuItem.getItemId()) {
                         case R.id.PAKISTAN:
-                            selected_fragment = new Pakistan_Fragment();
+                            selected_fragment = new PakistFragment();
                             break;
                         case R.id.USA:
-                            selected_fragment = new USA_Fragment();
+                            selected_fragment = new UsaFragment();
                             break;
                     }
                     getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, selected_fragment).commit();
