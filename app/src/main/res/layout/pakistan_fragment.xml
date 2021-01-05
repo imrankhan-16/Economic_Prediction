@@ -9,14 +9,6 @@
         android:layout_height="wrap_content"
         android:id="@+id/text">
     </TextView>
-    
-<!--    <com.jjoe64.graphview.GraphView-->
-<!--        android:layout_centerInParent="true"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="300dp"-->
-<!--        android:id="@+id/pakistan_graph"/>-->
-
-
 
     <com.anychart.AnyChartView
         android:id="@+id/any_chart_view"

@@ -1,139 +1,250 @@
 package com.myapp.prediction;
 
-import android.app.Activity;
-import android.graphics.Color;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.jjoe64.graphview.GraphView;
+import com.anychart.AnyChart;
+import com.anychart.AnyChartView;
+import com.anychart.chart.common.dataentry.DataEntry;
+import com.anychart.chart.common.dataentry.ValueDataEntry;
+import com.anychart.charts.Cartesian;
+import com.anychart.core.cartesian.series.Line;
+import com.anychart.data.Mapping;
+import com.anychart.data.Set;
+import com.anychart.enums.MarkerType;
+import com.anychart.enums.TooltipPositionMode;
+import com.anychart.graphics.vector.Anchor;
+import com.anychart.graphics.vector.Stroke;
 import com.jjoe64.graphview.series.DataPoint;
-import com.jjoe64.graphview.series.LineGraphSeries;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class USA_Fragment extends Fragment
 {
-    private GraphView graph_;
-    public ArrayList<Integer> Actual_Data;
-    public ArrayList<Integer> Train_Prediction;
-    public ArrayList<Integer> Test_Prediction;
+    private static final String URL = "http://192.168.18.24:8080/predict?dataset=us";
+    public AnyChartView graph;
+    private ProgressBar progressBar;
+    public List<Double> actualData=new ArrayList<>();
+    public List<Double> trainData= new ArrayList<>();;
+    public List<Double> testData= new ArrayList<>();;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState)
     {
         View root = inflater.inflate(R.layout.usa_fragment, container, false);
-        graph_ = root.findViewById(R.id.usa_graph);
-        graph_.setVisibility(View.VISIBLE);
-
-        Actual_Data = new ArrayList<>();
-        Train_Prediction = new ArrayList<>();
-        Test_Prediction = new ArrayList<>();
-
-        for(int i = 0; i < 300; i++)
-        {
-            Actual_Data.add(i+6);
-        }
-
-        for(int i = 0; i < 300; i++)
-        {
-            Train_Prediction.add(i+2);
-        }
-
-        for(int i = 0; i<300; i++)
-        {
-            Test_Prediction.add(i+15);
-        }
-
-
-        Graph();
+        progressBar = (ProgressBar) root.findViewById(R.id.progress1);
+        graph = (AnyChartView) root.findViewById(R.id.any_chart_view1);
+        graph.setVisibility(View.VISIBLE);
         return root;
     }
 
-    protected void Populate_Actual_Values(ArrayList<Integer> actual_values)
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        fetchDataFromFlask();
+    }
+
+    public void fetchDataFromFlask()
     {
-        for(int i = 0; i < actual_values.size(); i++)
+        OkHttpClient okHttpClient = new OkHttpClient();
+        final Request request = new Request.Builder()
+                .url(URL)
+                .build();
+
+        okHttpClient.newCall(request).enqueue(new Callback()
         {
-            Actual_Data.add(actual_values.get(i));
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e)
+            {
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run()
+                    {
+                        Toast.makeText(getContext(), "Network not found!", Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException
+            {
+                if(response.isSuccessful())
+                {
+                    final String res = response.body().string();
+                    getActivity().runOnUiThread(new Runnable()
+                    {
+                        @Override
+                        public void run()
+                        {
+                            initializeData(res);
+                            drawChart(graph);
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    public void drawChart(AnyChartView anyChartView)
+    {
+        Cartesian cartesian = AnyChart.line();
+        cartesian.animation(true);
+        cartesian.padding(10d, 20d, 5d, 20d);
+
+        cartesian.crosshair().enabled(true);
+        cartesian.crosshair()
+                .yLabel(true)
+                // TODO ystroke
+                .yStroke((Stroke) null, null, null, (String) null, (String) null);
+
+        cartesian.tooltip().positionMode(TooltipPositionMode.POINT);
+        cartesian.title("Economic forecasting using deep neural network LSTM.");
+        cartesian.yAxis(0).title("GDP");
+        cartesian.xAxis(0).labels().padding(5d, 5d, 5d, 5d);
+
+        List<DataEntry> seriesData = new ArrayList<>();
+        for(int i = 0; i < testData.size(); i++)
+        {
+            seriesData.add(new USA_Fragment.CustomDataEntry(""+i, actualData.get(i), testData.get(i), trainData.get(i)));
+        }
+
+        Set set = Set.instantiate();
+        set.data(seriesData);
+        Mapping series1Mapping = set.mapAs("{ x: 'x', value: 'value' }");
+        Mapping series2Mapping = set.mapAs("{ x: 'x', value: 'value2' }");
+        Mapping series3Mapping = set.mapAs("{ x: 'x', value: 'value3' }");
+
+        Line series1 = cartesian.line(series1Mapping);
+        series1.name("Actual");
+        series1.hovered().markers().enabled(true);
+        series1.hovered().markers()
+                .type(MarkerType.CIRCLE)
+                .size(4d);
+        series1.tooltip()
+                .position("right")
+                .anchor(String.valueOf(Anchor.LEFT_CENTER))
+                .offsetX(5d)
+                .offsetY(5d);
+
+        Line series2 = cartesian.line(series2Mapping);
+        series2.name("Test");
+        series2.hovered().markers().enabled(true);
+        series2.hovered().markers()
+                .type(MarkerType.CIRCLE)
+                .size(4d);
+        series2.tooltip()
+                .position("right")
+                .anchor(String.valueOf(Anchor.LEFT_CENTER))
+                .offsetX(5d)
+                .offsetY(5d);
+
+        Line series3 = cartesian.line(series3Mapping);
+        series3.name("Train");
+        series3.hovered().markers().enabled(true);
+        series3.hovered().markers()
+                .type(MarkerType.CIRCLE)
+                .size(4d);
+        series3.tooltip()
+                .position("right")
+                .anchor(String.valueOf(Anchor.LEFT_CENTER))
+                .offsetX(5d)
+                .offsetY(5d);
+
+        cartesian.legend().enabled(true);
+        cartesian.legend().fontSize(13d);
+        cartesian.legend().padding(0d, 0d, 10d, 0d);
+        anyChartView.setChart(cartesian);
+        progressBar.setVisibility(View.GONE);
+    }
+
+
+    public class CustomDataEntry extends ValueDataEntry
+    {
+        CustomDataEntry(String x, Number value, Number value2, Number value3)
+        {
+            super(x, value);
+            setValue("value2", value2);
+            setValue("value3", value3);
         }
     }
 
-    protected void Populate_Test_Values(ArrayList<Integer> test_values)
+
+    public void SplitString(String s, List<Double> ls)
     {
-        for(int i = 0; i < test_values.size(); i++)
+        ArrayList<Double> temporary = new ArrayList<Double>();
+        String[] data = s.split(",|\"");
+        int i = 0;
+        for(String w : data)
         {
-            Test_Prediction.add(test_values.get(i));
+            double value = Double.parseDouble(w);
+
+            if(Double.isNaN(value))
+            {
+                value = 0.0;
+            }
+
+            temporary.add(value);
+            Log.d("Pak", "value "+ value);
+            ls.add(i, value);
+            ++i;
         }
     }
 
-    protected void Populate_Trained_Values(ArrayList<Integer> trained_values)
-    {
-       for (int i = 0; i < trained_values.size(); i++)
-       {
-           Train_Prediction.add(trained_values.get(i));
-       }
-    }
-
-    protected void Graph()
+    public void initializeData(String s)
     {
         try
         {
-            DataPoint[] actual_data_points = new DataPoint[300];
-            DataPoint[] train_predictions_points = new DataPoint[300];
-            DataPoint[] test_predictions_points = new DataPoint[300];
-
-            for(int i = 0; i < Actual_Data.size(); i++)
+            Scanner s1 = new Scanner(s);
+            s1.useDelimiter("\\[|\\]|\n|\\{|\\}");
+            String line = "";
+            while(s1.hasNext())
             {
-                actual_data_points[i] = new DataPoint(Integer.valueOf(Actual_Data.get(i)), Integer.valueOf(i));
+                line += s1.next();
             }
 
-            for(int i = 0; i < Train_Prediction.size(); i++)
+
+            String[] words = line.split("train\":|test\":|actualdata\":");
+            String actualdata = "";
+            String traindata = "";
+            String testdata = "";
+
+            for(String w : words)
             {
-                train_predictions_points[i] = new DataPoint(Integer.valueOf(Train_Prediction.get(i)), Integer.valueOf(i));
+                w.replaceAll("\"", "");
             }
 
-            for (int i = 0; i < Test_Prediction.size(); i++)
-            {
-               test_predictions_points[i] = new DataPoint(Integer.valueOf(Test_Prediction.get(i)), Integer.valueOf(i));
-            }
+            words[0] = words[1]; words[1] = words[2]; words[2] = words[3];
+            actualdata = words[0];
+            testdata = words[1];
+            traindata = words[2];
 
-            LineGraphSeries<DataPoint> actual_data = new LineGraphSeries<>(actual_data_points);
-            LineGraphSeries<DataPoint> test_prediction = new LineGraphSeries<>(test_predictions_points);
-            LineGraphSeries<DataPoint> train_prediction = new LineGraphSeries<>(train_predictions_points);
-
-            actual_data.setColor(Color.BLUE);
-            train_prediction.setColor(Color.BLACK);
-            test_prediction.setColor(Color.GREEN);
-
-            actual_data.setDrawDataPoints(true);
-            actual_data.setDataPointsRadius(2);
-            actual_data.setThickness(5);
-
-            train_prediction.setDrawDataPoints(true);
-            train_prediction.setDataPointsRadius(2);
-            train_prediction.setThickness(5);
-
-            test_prediction.setDrawDataPoints(true);
-            test_prediction.setDataPointsRadius(2);
-            test_prediction.setThickness(5);
-
-            graph_.addSeries(actual_data);
-            graph_.addSeries(train_prediction);
-            graph_.addSeries(test_prediction);
-
-            graph_.setBackgroundColor(Color.argb(0, 0, 0, 0));
+            SplitString(actualdata, actualData);
+            SplitString(testdata, testData);
+            SplitString(traindata, trainData);
         }
-        catch (IllegalArgumentException e)
+        catch (Exception e)
         {
-            Toast.makeText(getContext(), e.getMessage(), Toast.LENGTH_LONG).show();
+            Log.d("Pak>>", "error", e);
         }
     }
 }
